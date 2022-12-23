@@ -1,0 +1,547 @@
+---
+title: "Analysis of Hemoglobin Concentration in Elite Athletes"
+author: "Annie DeForge"
+date: "11/20/2021"
+output: word_document
+---
+
+# Abstract
+Hematology is the study of blood and is an area of interest for elite athletes and their trainers. This paper examines the data of Australian athletes. A Gaussian generalized linear model was fit to hemoglobin concentration. In this model, sex, sport, BMI, and white blood cell count were found to be significant in estimating hemoglobin concentration. This model can give insight into how hematological differences between athletes.
+
+# Section 1: Introduction
+Blood carries oxygen and nutrients to the organs and carries away carbon dioxide and waste material to be filtered out. For elite athletes, these functions are especially important for performing at the top of their game. A study by the Australian Institute of Sport to learn more about the relationship between athletics and blood stated, "The main aim of the statistical analysis was to determine whether there were any hematological differences, on average, between athletes from the various sports, between the sexes, and whether there was an effect of mass or height"^[Australian Institute of Sport. GLMSData. Telford, R. D. and Cunningham, R. B. (1991) Sex, sport, and body-size dependency of hematology
+in highly trained athletes. Medicine and Science in Sports and Exercise, 23(7):788–794.].
+
+The data examined in this paper is the same data that was gathered for this AIS study. It is based on the observation of 202 athletes from many different sports.
+
+The outline of the remainder of this paper is as follows. In Section 2, I will discuss the important characteristics of the data. I will use this information about to data to select and interpret a model in Section 3. Finally, I will summarize and discuss the model in Section 4. 
+
+# Section 2: Data Characteristics
+The data was collected in an observational study and includes 13 variables on the sex, sport, body mass and blood composition measures. They include: hemoglobin concentration (HGB), sex, sport, lean body mass (LBM), height (Ht), weight (Wt), BMI, sum of skin folds (SSF), red blood cell count (RBC), white blood cell count (WBC), hematocrit percentage (HCT), Plasma Ferritins (Ferr), and body fat percentage (PBF).
+
+```{r}
+library(GLMsData)
+library(ggplot2)
+library(statmod)
+data(AIS)
+View(AIS)
+```
+
+
+HGB:
+
+Hemoglobin concentration is a positive continuous variable and the target variable of our dataset.  
+```{r}
+summary(AIS$HGB)
+```
+
+The mean hemoglobin concentration is 14.57 in the athletes studied, the minimum is 11.60, and the maximum is 19.20.
+
+Because the hemoglobin concentration is bounded by 0, we expect this data to be skewed. The histogram shown below isn't perfectly symmetric, however, the mean and the median are very close to one another. This indicates that this data is less skewed than would normally be expected for a continuous positive variable. 
+```{r}
+hist(AIS$HGB)
+```
+
+
+Sex:
+```{r}
+round(table(AIS$Sex)/length(AIS$Sex), 1)
+tapply(AIS$HGB, AIS$Sex, mean)
+tapply(AIS$HGB, AIS$Sex, sd)
+```
+
+The data set has an even male female split. The mean hemoglobin concentration is 13.6 for females and 15.6 for males. The standard deviation for males and females is 0.9. Therefore, the mean female and male hemoglobin concentrations are further than a standard deviation away from each other which indicates there is a difference between sex. Although this was not obvious in the histogram of HGB above. 
+
+To examine this further, I will look at the boxplots of HGB split up by sex.
+
+```{r}
+boxplot(AIS$HGB~AIS$Sex)
+```
+
+Although there is some overlap, we can see from the histogram that there are clear there is a difference in hemoglobin concentration based on sex.
+
+Sport:
+```{r}
+round(table(AIS$Sport)/length(AIS$Sport), 2)
+tapply(AIS$HGB, AIS$Sport, mean)
+table(AIS$Sport, AIS$Sex)
+```
+
+There are quite a few sports represented in this data. Although for many sports, it seems like the athletes have a mean hemoglobin concentration that is quite close to the total population mean of 14.7. Gymnastics and Netball are a bit lower with a mean of 13.6 and 12.8. While field events, sprints, and waterpolo are all above 15.0. 
+
+Upon further examination of the data, we can see that gymnastics and netball are all female which contributes to the lower average, and waterpolo is all male, which is why it is higher on average. Males are also overrepresented in sprints and field events. This indicates that sports may not be as big of a factor, since the average are clearly influenced by the sex composition.
+
+
+
+Lean Body Mass
+
+The lean body mass has a slightly skewed right distribution with a median of 63.03 kg.
+In the scatterplot, we can see the clusters caused by the male and female groups, however there is a moderate positive relationship between lean body mass and hemoglobin concentration for both males and females..
+```{r}
+summary(AIS$LBM)
+
+hist(AIS$LBM)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = LBM,
+                          y = HGB,
+                          color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "lean body mass (kg)",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+Height
+
+On the histogram, there is a gap between the points shorter than 150cm and the rest of the height data. 
+Upon inspection of the data, the data points are two gymnasts. Gymnasts can be quite short, so we should not be concerned about the data that this is a mistype.
+
+There is a negative correlation between height and hemoglobin concentration for males and almost no effect for females.
+```{r}
+summary(AIS$Ht)
+
+hist(AIS$Ht)
+
+which(AIS$Ht < 150)
+AIS[c(99, 100), ]
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = Ht,
+                          y = HGB,
+                          color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Height (cm)",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+
+Weight
+
+The weights of the athletes are normally distributed around a mean of 75.01 kg.
+There is a moderate positive correlation between weight and hemoglobin for males and females.
+```{r}
+summary(AIS$Wt )
+
+hist(AIS$Wt)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = Wt,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "weight (kg)",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+BMI
+
+BMI appears to have a skewed right distribution in the histogram, however, the mean and the median are very close. When looking at the boxplot and the scatterplot, we can see the skewedness in the histogram is caused by several outliers with a BMI greater than 30. Given this, we will have to make sure to check our model for influencial points. There is a moderate positive correlation between BMI and hemoglobin concentration. The slope appears to be more significant for males than for females.
+```{r}
+summary(AIS$BMI)
+
+hist(AIS$BMI)
+
+boxplot(AIS$BMI)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = BMI,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "BMI",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+
+Sum of Skin Folds
+
+Sum of skin folds is a skewed right distribution with a median of 58.60. There is a moderate negative correlation between sum of skin fold and hemoglobin concentration for females and a positive one for males.
+```{r}
+summary(AIS$SSF)
+
+hist(AIS$SSF)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = SSF,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Sum of Skin Folds",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+Red Blood Cell Count
+
+Except for one data point with a very large value, red blood cell is approximately normally distributed around a mean of red blood cell count of 4.719 $10^{12}$ per liter.
+
+Upon inspection, the point is a male sprinter with a both a high red blood cell count of 6.72 and a high hemoglobin concentration of 19.2. We will want to check if this is an influential point when building our model.
+
+Red blood cell count has a strong positive correlation with hemoglobin concentration, regardless of sex. Red blood cells contain hemoglobin, so that is why these two variables are directly related. We should exclude RBC from our model because including would overwhelm the effect of sex, sport, and body mass on hemoglobin.
+```{r}
+summary(AIS$RBC)
+
+hist(AIS$RBC)
+
+which(AIS$RBC > 6)
+AIS[166, ]
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = RBC,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Red Blood Cell Count",
+              y = "Haemoglobin Concentration")
+p
+```
+
+
+
+
+White Blood Cell Count
+
+The white blood cell count has a skewed right distribution 7.11 $10^{12}$ per liter. There are several large values with a count greater than 12 separated from the rest of the data.
+
+One interesting observation about this larger white blood cell counts, is the fact that 3 of the 4 came from waterpolo athletes
+
+There appears to be a moderate positive correlation between white blood cell count and hemoglobin concentration for females and there appears to be no correlation for males.
+```{r}
+summary(AIS$WBC)
+
+hist(AIS$WBC)
+
+which(AIS$WBC > 12)
+AIS[c(36, 186, 187, 194), ]
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = WBC,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "White Blood Cell Count",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+
+Hematocrit Percentage
+
+The hematocrit percentage has a slight left skew with a median of 43.50 %. There is one outlier data point that has a hematocrit percentage of nearly 60%.
+
+Upon inspection, we can see that it is the same athlete that was identified as a outlier when inspecting the red blood cell count data. This makes sense because hematocrit is the volume percentage of red blood cells in blood. This is evidence that this point is not an error or typo, but the athlete does indeed have lots of red blood cells.
+
+Hematocrit percentage has a strong positive correlation with hemoglobin concentration, regardless of sex. Once again, because hematocrit is diectly related to the concentration of red blood cells we do not want to include this in our model so that we can focus on the effect of other variables.
+```{r}
+summary(AIS$HCT)
+
+hist(AIS$HCT)
+
+which(AIS$HCT > 55)
+
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = HCT,
+                          y = HGB, color = Sex))
+p <- p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Hematocrit",
+              y = "Haemoglobin Concentration")
+p
+```
+
+
+
+
+Plasma Ferritins
+
+Plasma Ferritin concentration has a strong rightward skew with a median of 65.50. 
+Looking at the scatterplot it seems there is no correlation with hemoglobin concentration.
+```{r}
+summary(AIS$Ferr)
+
+hist(AIS$Ferr)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = Ferr,
+                          y = HGB, color = Sex))
+p <- p + geom_point()+geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Plasma Ferritins",
+              y = "Hemoglobin Concentration")
+p
+```
+
+
+
+
+Body Fat Percentage
+
+Body Fat percentage has a strong rightward skew with a median of 11.65% body fat. 
+There appears to be a moderate negative correlation with hemoglobin concentration for females and a slight positive one for males, there is more more variation in body fat percentage for females than males.
+```{r}
+summary(AIS$PBF)
+
+hist(AIS$PBF)
+
+p <- ggplot(data = AIS,
+            mapping = aes(x = PBF,
+                          y = HGB, color = Sex))
+p <- p + geom_point()+geom_smooth(method = "lm", se = FALSE)
+p <- p + labs(x = "Body Fat Percentage",
+              y = "Haemoglobin Concentration")
+p
+```
+
+
+
+
+Mean and Variance Relationship of hemoglobin:
+```{r}
+bks <- c(15, quantile(AIS$BMI, probs = (1:8)/9), 35)
+AIS$bodymassidx <- cut(AIS$BMI,
+                 breaks = bks)
+rm(bks)
+```
+
+First we split the BMI variable into categorical intervals, we will use these intervals to split our response variable HGB and calculated the mean and variance of each of these split sections in the table below.
+
+```{r}
+tbl <- data.frame(Size = tapply(AIS$HGB, AIS$bodymassidx, length),
+                  Mean = tapply(AIS$HGB, AIS$bodymassidx, mean),
+                  Var  = tapply(AIS$HGB, AIS$bodymassidx, var))
+tbl$CV <- tbl$Var / (tbl$Mean)^2 
+tbl
+```
+
+The coeffcient of variance in the table above is not constant across the segments, when calculated as $\frac{var(HGB)}{mean(HGB)^2}$. So a gamma distribution would not fit for this data.
+
+```{r}
+p <- ggplot(data = tbl,
+            mapping = aes(x = log(Mean),
+                          y = log(Var)))
+p <- p + geom_point() 
+p <- p + labs(x = "Log Mean Hemoglobin",
+              y = "Log Variance Hemoglobin")
+p
+```
+
+The scatterplot of log of the variance against lot of the mean does not show the variance increasing exponentially as the mean increases. This means that an inverse gaussian would also not work for this data. The histogram of hemoglobin concentration (Figure 1) was not symmetric but it was nearly normal, that suggests that we should try a gaussian distribution to model this data.
+
+
+# Section 3: Model Selection and Interpretation
+
+## Selection
+In order to answer the research question, I want to make a model that considers sex, sport, height and mass. Weight and lean body mass are both variables that measure mass. Additionally, BMI is a variable that combines the variables height and weight. I found a more significant drop in residual deviance when BMI was added to a model that included Sex and Sport compared to adding height and weight or height and lean body mass. Combining multiple measures of mass does not make sense because that would create a multicollinearity between the parameters. 
+
+From the anova test below, we can see that adding BMI as a variable to a base model with sex and sport results is 2.37 difference in deviance. This difference results in a F-test p-value of 0.06, which although that is not significant at a 0.05 level, it is significant at a 0.1 level, so BMI will be included in the model.
+```{r}
+fm.base <- glm(HGB ~ Sex+Sport, data=AIS, family = gaussian(link = 'identity'))
+fm.1 <- glm(HGB ~ Sex+Sport+BMI, data=AIS, family = gaussian(link = 'identity'))
+
+
+anova(fm.base, fm.1, test = 'F')
+```
+
+The other variables in the data that are not directly related to the research question could still improve the model. Hematocrit percentage and red blood cell count are not variables that I want to consider because they are directly related to the hemoglobin concentration and have very strong correlations, including them would overwhelm and reduce the significance of the other variables in the model.
+
+Of the remaining variables, I found that variables that measured body fat, body fat percentage and sum of skin folds, as well as plasma ferritin concentration did not improve the model. However the addition of white blood cell count, did result in a significant reduction in deviance.
+
+```{r}
+fm.2 <- glm(HGB ~ Sex+Sport+BMI+WBC, data=AIS, family = gaussian(link = 'identity'))
+
+anova(fm.2, fm.1, test = 'F')
+```
+
+Lastly, I examined several two-ways interactions between my variables and I found that white blood cell had interaction terms that were significant. I tried a model with a BMI and white blood cell interaction and did an anova F-test comparing to the main effects model. The p-value was 0.06, which although that would not be significant at a 5% level, it is significant at a 10% level, so I will include this interaction effect in the model.
+
+Upon finding this interaction effect in my model, I did further research. The stress that high levels of strength training that elite athletes can affect the immune system. Exercise immunology is the area of study related to this phenomenon.^[The compelling link between physical activity and the body's defense system. https://www.sciencedirect.com/science/article/pii/S2095254618301005.] Differences between athletes, including power versus endurance muscle building, body composition, and hormone changes have been found to effect immune response.^[Comparison of immunohematological profile between endurance- and power-oriented elite athletes. https://pubmed.ncbi.nlm.nih.gov/28152331/.] This research shows that the white blood cell variable interacts with the other variables in our dataset, so it is useful to include it in our model.
+
+```{r}
+fm.3 <- glm(HGB ~ Sex+Sport+BMI+WBC+BMI:WBC, data=AIS, family = gaussian(link = 'identity'))
+
+anova(fm.3, fm.2, test = "F")
+```
+
+
+Influential Points:
+```{r}
+plot(fm.3, which=4, col=c("blue")) 
+```
+
+The cook's distance plot shows points 90, 160, and 166 are shown to be influential to the model on the Cook's distance plot.
+
+Examining the points, 90 is a female tennis player, she has a normal BMI but her white blood cell count is low at 4.2 and she has a low hemoglobin concentration of 12. 160 is a male field event athlete, he has a high BMI of 32.52, but a low white blood cell count of 4.6 and a high hemoglobin concentration of 18. Finally, 166 is a male sprinter who has a normal BMI and white blood cell count but a high hemoglobin concentration of 19.2. 
+```{r}
+AIS[c(90, 160, 166), ]
+hist(AIS$BMI)
+hist(AIS$WBC)
+hist(AIS$HGB)
+```
+
+We will look at the coefficients of the last fitted model with and without this point
+
+```{r}
+fm.4 <- update(fm.3, data = AIS[-c(90, 160, 166), ])
+coef(summary(fm.3))
+coef(summary(fm.4))
+```
+
+The coefficients of the model without the 3 points seem to be mostly the same, the difference in coefficients is within about one standard deviation of the parameter. Therefore, we can keep points 90, 160, and 166 in the model as they are not overly influential.
+
+
+Parameter Transformations:
+
+The white blood cell count variable appeared to be slightly skewed to the right. I will check the partial residual plot to decide if there should be any transformation applied to the white blood cell parameter. 
+
+Looking at the white blood cell partial residual plot without any transformation, the data mostly follows the linear line. However, it seems like some of the points that have a a white blood cell count of about 4 and a partial residual of about -4 seem to not be as close to the fitted line. I would like to check if a log transformation would fix this issue in the partial residual plot.
+```{r}
+termplot(fm.3, partial.resid = TRUE, terms = "WBC")
+```
+
+Even after applying the log transformation, those points with the lowest partial residuals do not seem to be better fitted with a log function. I think that I will not apply this transformation to the parameter. 
+```{r}
+fm.5 <- update(fm.3, . ~ Sex + Sport + BMI + log(WBC) + log(WBC):BMI)
+termplot(fm.5, partial.resid = TRUE, terms = "log(WBC)")
+```
+
+```{r}
+summary(fm.3)
+```
+
+
+My final fitted model is:
+
+$\mu = 7.76 + 1.60 \text{SexMale} + 0.83\text{SportField} + 0.59\text{SportGym}-0.63\text{SportNetball}+0.51\text{SportRowing}+0.46\text{SportSwim}+0.51\text{SportT400m}+0.45\text{SportTennis}+1.05\text{SportTSprnt}+0.31\text{SportWPolo}+0.22\text{BMI}+0.63\text{WBC}-0.02\text{(BMI)(WBC)}$
+
+
+## Diagnostics
+Now that a model has been selected, we will examine how well it fits the data.
+
+```{r}
+library(statmod)
+AIS$eta <- predict(fm.3, type = "link")
+AIS$mu <- predict(fm.3, type = "response")
+AIS$rD <- resid(fm.3, type = "deviance")
+AIS$rQ <- qresid(fm.3)
+AIS$rS <- rstandard(fm.3)
+AIS$rW <- resid(fm.3, type = "working")
+```
+
+The deviance and quantile residual plots below have an equal variance and are centered at 0, which shows that this model is a good fit for this data.
+```{r}
+p <- ggplot(data = AIS,
+            mapping = aes(x = mu,
+                          y = rD))
+p <- p + geom_point() + geom_smooth(se = FALSE)
+p <- p + labs(x = "Fitted Values",
+              y = "Deviance Residuals")
+p
+```
+
+```{r}
+p <- ggplot(data = AIS,
+            mapping = aes(x = mu,
+                          y = rQ))
+p <- p + geom_point() + geom_smooth(se = FALSE)
+p <- p + labs(x = "Fitted Values",
+              y = "Quantile Residuals")
+p
+```
+
+The working response plot is linear, which shows that the link function that we chose (an identity link function which means that we have not transformed our response variable hemoglogin concentration) is appropriate for this data.
+```{r}
+p <- ggplot(data = AIS,
+            mapping = aes(x = eta + rW,
+                          y = eta))
+p <- p + geom_point() 
+p <- p + labs(x = "Working Response",
+              y = "Linear Predictor")
+p <- p + geom_abline(intercept = 0, slope = 1, 
+                     color = "red")
+p
+```
+
+
+We are also able to check the residuals against parameters which are not in the model. The quantile residual plot vs body fat percentage below shows that even though body fat % is not included in our model the residuals are centered at 0. Although the variance of the residuals are not constant, the plot overall indicates that body fat % is well predicted by our model, thus it is ok to exclude this variable from the model because it does not provide much new information. Sum of skin folds, lean body mass, height, weight, and plasma ferritin concentration showed similar plots.
+
+```{r}
+p <- ggplot(data = AIS,
+            mapping = aes(x = PBF,
+                          y = rQ))
+p <- p + geom_point() + geom_smooth(se = FALSE)
+p <- p + labs(x = "Percentage Body Fat",
+              y = "Quantile Residuals")
+p
+```
+
+
+However, the residual plot for hematocrit percentage is very not centered at 0. The residual plot shows that this variable would add information to our model. Nevertheless, our research question focuses on the effects of sex, sport, height and weight, so estimating the effect of hematocrit percentage would not be useful for this analysis. The plot for red blood cell count shows a similar result, but is excluded for the same reason.
+```{r}
+p <- ggplot(data = AIS,
+            mapping = aes(x = HCT,
+                          y = rQ))
+p <- p + geom_point() + geom_smooth(se = FALSE)
+p <- p + labs(x = "Hematocrit Percentage",
+              y = "Quantile Residuals")
+p
+```
+
+## Interpretation
+
+Interpretation of Coefficients:
+
+```{r}
+coef(fm.3)
+```
+
+The model does not have a link function, so the effect of the coefficients are additive. 
+
+Males had a predicted average hemoglobin concentration of about 1.6 greater than females. 
+
+Athletes competing in field events, and sprinting had an increase in hemoglobin concentration of about 1 compared to basketball players, while athletes competing in gymnastics, rowing, swimming, distance track events, tennis and water polo had a concentration approximately 0.5 greater than basketball players.
+
+Our model show that a 5 unit increase in BMI would increase hemoglobin by about 1, but would simultaneously decrease by 0.1 * the white blood cell count. 
+
+An increase in white blood cells would both increase hemoglobin by 0.6 and decrease it by 0.02 * BMI.
+
+
+
+Interpretation of predicted hemoglobin concentration:
+```{r}
+new.dat <- data.frame(Sex = "F", BMI = 23, WBC = 7, Sport = "Tennis")
+
+(mu <- predict(fm.3, newdata = new.dat, type = "response"))
+
+new.dat <- data.frame(Sex = "M", BMI = 23, WBC = 7, Sport = "Tennis")
+(mu <- predict(fm.3, newdata = new.dat, type = "response"))
+
+new.dat <- data.frame(Sex = "M", BMI = 30, WBC = 7, Sport = "Tennis")
+(mu <- predict(fm.3, newdata = new.dat, type = "response"))
+```
+
+A female athlete who competes in tennis with a lean body mass of 63 kg, and a BMI of 23is predicted to have a hemoglobin concentration of 13.86. 
+
+If that same athlete were instead male, the predicted hemoglobin concentration would be 15.46.
+
+If the male athlete had a BMI of 30, the estimate increases slightly to 15.83.
+
+# Section 4: Conclusion
+
+The range of hemoglobin concentration among elite athletes is not especially large, however, it is still possible to identify factors that contribute to hematological differences. The recommended regression model concludes that sex, sport, BMI, and white blood cell count can explain the variation in hemoglobin concentration. The initial AIS study was wanted to know if height and mass of athletes contributed to differences in blood. Although I did not find height alone to be a significant parameter in the model, BMI is a transformation of height and weight, and was found to be an important explanatory variable. In exploring this model, I also found white blood cells to be useful for estimating hemoglobin. Additional research that I found on exercise immunology indicates that there is an interaction between white blood cells and body composition for elite athletes. Further research should test this model on an unseen validation data and examine the model's predictive performance.
+
+# Section 5: References:
+Comparison of immunohematological profile between endurance- and power-oriented elite athletes. https://pubmed.ncbi.nlm.nih.gov/28152331/.
+
+The compelling link between physical activity and the body's defense system. https://www.sciencedirect.com/science/article/pii/S2095254618301005.
+
+Telford, R. D. and Cunningham, R. B. (1991) Sex, sport, and body-size dependency of hematology
+in highly trained athletes. Medicine and Science in Sports and Exercise, 23(7):788–794. Australian Institute of Sport. GLMSData. 
